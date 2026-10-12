@@ -15,6 +15,11 @@ from typing import Any, Dict, List
 
 from flask import Flask, jsonify, request
 
+try:  # when run as a script (api/ on sys.path)
+    from scoring import compute_channel_score
+except ModuleNotFoundError:  # when imported as a package (repo root on sys.path)
+    from api.scoring import compute_channel_score
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s %(levelname)s %(name)s: %(message)s",
@@ -89,6 +94,20 @@ def api_channel_occupancy():
         (scan_id,),
     )
     return jsonify({"location": location, "scan_id": scan_id, "channels": rows})
+
+
+@app.route("/api/channel-score")
+def api_channel_score():
+    """Congestion score and recommended 2.4 GHz channel for the latest scan."""
+    location = request.args.get("location", "default")
+    scan_id = latest_scan_id(location)
+    rows = query(
+        "SELECT channel, rssi FROM observations WHERE scan_id = ?", (scan_id,)
+    )
+    result = compute_channel_score(rows)
+    result["location"] = location
+    result["scan_id"] = scan_id
+    return jsonify(result)
 
 
 @app.route("/api/timeline")

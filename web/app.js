@@ -42,13 +42,52 @@ async function loadLocations() {
   return select.value;
 }
 
+function withCandidateChannels(rows) {
+  // Ensure the non-overlapping candidates always appear, even with zero APs,
+  // so an empty (ideal) channel is visible instead of missing from the chart.
+  const byChannel = new Map(rows.map((row) => [row.channel, row]));
+  for (const channel of NON_OVERLAPPING_CHANNELS) {
+    if (!byChannel.has(channel)) {
+      byChannel.set(channel, { channel, band: "2.4GHz", ap_count: 0, avg_rssi: null });
+    }
+  }
+  return [...byChannel.values()].sort((a, b) => a.channel - b.channel);
+}
+
+async function renderScore(location) {
+  const data = await fetchJson(
+    `/api/channel-score?location=${encodeURIComponent(location)}`
+  );
+  const cards = data.candidates
+    .map((candidate) => {
+      const value =
+        candidate.interference_dbm === null
+          ? "clear"
+          : `${candidate.interference_dbm} dBm`;
+      const isBest = candidate.channel === data.recommended ? " best" : "";
+      return `<div class="candidate${isBest}">
+        <span class="candidate-ch">Ch ${candidate.channel}</span>
+        <span class="candidate-val">${value}</span>
+        <small>${candidate.ap_count} APs</small>
+      </div>`;
+    })
+    .join("");
+  document.getElementById("recommendation").innerHTML = `
+    <div class="rec-headline">
+      Recommended 2.4&nbsp;GHz channel: <strong>${data.recommended}</strong>
+    </div>
+    <div class="candidates">${cards}</div>
+    <p class="rec-note">Lower interference is better; "clear" means no detected networks.</p>`;
+}
+
 async function renderOccupancy(location) {
   const data = await fetchJson(
     `/api/channel-occupancy?location=${encodeURIComponent(location)}`
   );
-  const labels = data.channels.map((row) => row.channel);
-  const counts = data.channels.map((row) => row.ap_count);
-  const colors = data.channels.map((row) => channelColor(row.channel));
+  const channels = withCandidateChannels(data.channels);
+  const labels = channels.map((row) => row.channel);
+  const counts = channels.map((row) => row.ap_count);
+  const colors = channels.map((row) => channelColor(row.channel));
 
   if (occupancyChart) {
     occupancyChart.destroy();
@@ -100,7 +139,11 @@ async function renderTimeline(location) {
 }
 
 async function refresh(location) {
-  await Promise.all([renderOccupancy(location), renderTimeline(location)]);
+  await Promise.all([
+    renderScore(location),
+    renderOccupancy(location),
+    renderTimeline(location),
+  ]);
 }
 
 async function main() {

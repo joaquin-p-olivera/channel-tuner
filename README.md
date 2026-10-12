@@ -86,11 +86,16 @@ pip install -r requirements.txt
 
 ## Status
 
-Early skeleton. Known TODOs:
+Working: capture (macOS/Linux), storage, dashboard, and a 2.4 GHz congestion
+score. For each candidate channel (1, 6, 11) the score sums the interference
+from access points on that channel and on overlapping channels, weighted by
+signal strength (RSSI), and recommends the least congested one. Exposed at
+`/api/channel-score` and shown as a recommendation card on the dashboard.
+
+Known TODOs:
 
 - Normalize RSSI across backends (Linux `nmcli` reports a 0-100 quality value,
   macOS CoreWLAN reports dBm).
-- Weighted congestion score per channel and a channel recommendation.
 - Hour x channel heatmap endpoint and view.
 - Optional latency logging (`ping`) to correlate congestion with performance.
 - Optional "apply best channel" step for your own router.
