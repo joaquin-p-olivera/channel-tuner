@@ -84,6 +84,12 @@ pip install -r requirements.txt
 # open http://127.0.0.1:5000
 ```
 
+> **macos branch:** this branch serves the dashboard with a zero-dependency
+> stdlib server (`api/server.py`) instead of Flask, so it runs with no pip
+> install on managed machines. `main` uses Flask. `run_api.sh` already points to
+> the stdlib server on this branch; you can also run `python3 api/server.py
+> --port 5000` directly.
+
 ## Status
 
 Early skeleton. Known TODOs:
