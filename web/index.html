@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>channel-tuner</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header>
+      <h1>channel-tuner</h1>
+      <p class="subtitle">Passive Wi-Fi channel congestion over time</p>
+    </header>
+
+    <section class="controls">
+      <label for="location-select">Location</label>
+      <select id="location-select"></select>
+    </section>
+
+    <section class="summary">
+      <div class="card"><span id="stat-scans">–</span><small>scans</small></div>
+      <div class="card"><span id="stat-observations">–</span><small>observations</small></div>
+      <div class="card"><span id="stat-networks">–</span><small>unique networks</small></div>
+    </section>
+
+    <section class="chart-block">
+      <h2>Channel occupancy (latest scan)</h2>
+      <canvas id="occupancy-chart"></canvas>
+    </section>
+
+    <section class="chart-block">
+      <h2>Access points seen over time</h2>
+      <canvas id="timeline-chart"></canvas>
+    </section>
+
+    <footer>
+      <p>
+        Passive listening only. No frames are transmitted. Identifying fields are
+        anonymized. Channel changes are applied only to routers you control.
+      </p>
+    </footer>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>

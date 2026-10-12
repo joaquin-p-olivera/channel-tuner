@@ -1,0 +1,8 @@
+# Core dependency (API + frontend serving).
+Flask>=3.0
+
+# macOS only: the CoreWLAN scan backend needs pyobjc. Uncomment on macOS, or
+# install with: pip install pyobjc-framework-CoreWLAN
+# pyobjc-framework-CoreWLAN>=10.0
+
+# Linux uses nmcli (NetworkManager), which is a system tool, not a pip package.

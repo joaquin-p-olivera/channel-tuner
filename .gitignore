@@ -1,0 +1,18 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+
+# Data: database, WAL files, and the anonymization salt stay local.
+data/
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+.salt
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
