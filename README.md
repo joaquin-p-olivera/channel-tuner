@@ -15,9 +15,9 @@ to explore how congestion evolves by channel and by hour.
 - **BSSID anonymized.** The BSSID (MAC address) is hashed with a local salt;
   raw MAC addresses are never written to disk. The SSID (network name) is kept
   in clear so the dashboard is readable: the real name on Linux/CoreWLAN, or a
-  per-scan `A`/`B`/`C` label on macOS, where system_profiler redacts it. Those
-  labels are per-scan only — without a stable identifier the same network cannot
-  be tracked across scans on that backend.
+  random 10-character id on macOS, where system_profiler redacts it. That id is
+  random on every run — without a stable identifier the same network cannot be
+  tracked across scans on that backend.
 - **Acts only on your own routers.** Any future "apply best channel" step is
   limited to routers you have legitimate admin access to. It never touches
   anyone else's equipment.

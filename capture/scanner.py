@@ -16,6 +16,7 @@ import json
 import logging
 import platform
 import re
+import secrets
 import subprocess
 from typing import List, Optional, Tuple
 
@@ -250,27 +251,21 @@ def _safe_int(value: str) -> Optional[int]:
         return None
 
 
-def _letter_label(index: int) -> str:
-    """Return a spreadsheet-style label for an index: 0->A, 25->Z, 26->AA."""
-    label = ""
-    index += 1
-    while index > 0:
-        index, remainder = divmod(index - 1, 26)
-        label = chr(ord("A") + remainder) + label
-    return label
+def _random_network_id() -> str:
+    """Return a random 10-character id for an unnamed network."""
+    return secrets.token_hex(5)  # 5 bytes -> 10 hex characters
 
 
-def _assign_fallback_labels(observations: List[AccessPointObservation]) -> None:
-    """Give A/B/C labels to networks with no name (e.g. redacted on macOS).
+def _assign_fallback_ids(observations: List[AccessPointObservation]) -> None:
+    """Give a random per-scan id to networks with no name (redacted on macOS).
 
-    Labels are per-scan only: without a stable identifier there is no way to
-    keep the same label for the same network across scans.
+    The ids are random on every run: without a stable identifier the same
+    network cannot be tracked across scans on such backends, and a random id
+    makes that explicit instead of implying continuity.
     """
-    counter = 0
     for observation in observations:
         if not observation.ssid:
-            observation.ssid = _letter_label(counter)
-            counter += 1
+            observation.ssid = _random_network_id()
 
 
 def scan() -> List[AccessPointObservation]:
@@ -283,5 +278,5 @@ def scan() -> List[AccessPointObservation]:
         observations = _scan_linux()
     else:
         raise NotImplementedError(f"No scan backend implemented for OS: {system}")
-    _assign_fallback_labels(observations)
+    _assign_fallback_ids(observations)
     return observations
