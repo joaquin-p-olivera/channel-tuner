@@ -55,9 +55,11 @@ and change the label when you move it.
 - `Flask` (see `requirements.txt`)
 - **macOS:** two backends, chosen automatically:
   - `pyobjc-framework-CoreWLAN` if installed (richer: includes BSSIDs).
-  - otherwise the built-in `system_profiler` command, which needs **nothing
-    installed** — useful on managed machines. It does not expose BSSIDs, so
-    unique-network counts are unavailable, but channel/band/signal are.
+    - otherwise the built-in `system_profiler` command, which needs **nothing
+    installed** — useful on managed machines. Recent macOS exposes no BSSID and
+    redacts the SSID here, so this backend yields **channel-level data only**
+    (channel, band, width, signal, security); per-network identity and
+    unique-network counts require the CoreWLAN or Linux backend.
   - Either way, Location Services permission for the terminal may be required.
 - **Linux:** `nmcli` (NetworkManager), already present on most desktops.
 

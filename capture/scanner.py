@@ -171,10 +171,16 @@ def _scan_macos_system_profiler() -> List[AccessPointObservation]:
                         "Skipping network without a channel: %s", network.get("_name")
                     )
                     continue
+                # Recent macOS redacts the SSID in system_profiler output
+                # (literal "<redacted>"); treat that as no name rather than
+                # storing it, which would make every network hash alike.
+                ssid = network.get("_name")
+                if ssid in (None, "", "<redacted>"):
+                    ssid = None
                 observations.append(
                     AccessPointObservation(
                         bssid=None,  # system_profiler does not expose BSSIDs
-                        ssid=network.get("_name"),
+                        ssid=ssid,
                         channel=channel,
                         band=band,
                         rssi=_parse_macos_signal(network.get("spairport_signal_noise")),
