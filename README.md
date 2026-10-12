@@ -12,9 +12,12 @@ to explore how congestion evolves by channel and by hour.
 - **Passive only.** Nothing is transmitted. It reads publicly broadcast beacon
   data (channel, signal, band), the same information any device sees when
   looking for networks.
-- **Anonymized.** Identifying fields (BSSID, SSID) are hashed with a local salt
-  before being stored. Raw MAC addresses and network names are never written to
-  disk.
+- **BSSID anonymized.** The BSSID (MAC address) is hashed with a local salt;
+  raw MAC addresses are never written to disk. The SSID (network name) is kept
+  in clear so the dashboard is readable: the real name on Linux/CoreWLAN, or a
+  per-scan `A`/`B`/`C` label on macOS, where system_profiler redacts it. Those
+  labels are per-scan only — without a stable identifier the same network cannot
+  be tracked across scans on that backend.
 - **Acts only on your own routers.** Any future "apply best channel" step is
   limited to routers you have legitimate admin access to. It never touches
   anyone else's equipment.
@@ -42,8 +45,8 @@ channel-tuner/
 
 - `scans` — one row per sweep: `timestamp`, `host`, `location`, optional
   `latency_ms`.
-- `observations` — one row per access point per sweep: `bssid_hash`,
-  `ssid_hash`, `channel`, `band`, `rssi`, `channel_width`, `security`.
+- `observations` — one row per access point per sweep: `bssid_hash`, `ssid`,
+  `channel`, `band`, `rssi`, `channel_width`, `security`.
 
 `location` labels the physical measurement point. RSSI and congestion are only
 comparable within the same location, so keep the machine still during a campaign

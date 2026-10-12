@@ -32,7 +32,7 @@ CREATE TABLE IF NOT EXISTS observations (
     obs_id        INTEGER PRIMARY KEY AUTOINCREMENT,
     scan_id       INTEGER NOT NULL REFERENCES scans(scan_id),
     bssid_hash    TEXT,
-    ssid_hash     TEXT,
+    ssid          TEXT,
     channel       INTEGER,
     band          TEXT,
     rssi          INTEGER,
@@ -83,12 +83,17 @@ def insert_observations(
     observations: List[AccessPointObservation],
     salt: str,
 ) -> int:
-    """Insert observations for a scan, anonymizing identifying fields."""
+    """Insert observations for a scan.
+
+    The BSSID (MAC) is hashed with the salt. The SSID is stored in clear so the
+    dashboard is readable: on Linux/CoreWLAN it is the real network name; on
+    macOS system_profiler (redacted) it is a per-scan A/B/C label.
+    """
     rows = [
         (
             scan_id,
             hash_value(observation.bssid, salt),
-            hash_value(observation.ssid, salt),
+            observation.ssid,
             observation.channel,
             observation.band,
             observation.rssi,
@@ -100,7 +105,7 @@ def insert_observations(
     connection.executemany(
         """
         INSERT INTO observations
-            (scan_id, bssid_hash, ssid_hash, channel, band, rssi, channel_width, security)
+            (scan_id, bssid_hash, ssid, channel, band, rssi, channel_width, security)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         """,
         rows,

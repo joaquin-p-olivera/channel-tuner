@@ -250,12 +250,38 @@ def _safe_int(value: str) -> Optional[int]:
         return None
 
 
+def _letter_label(index: int) -> str:
+    """Return a spreadsheet-style label for an index: 0->A, 25->Z, 26->AA."""
+    label = ""
+    index += 1
+    while index > 0:
+        index, remainder = divmod(index - 1, 26)
+        label = chr(ord("A") + remainder) + label
+    return label
+
+
+def _assign_fallback_labels(observations: List[AccessPointObservation]) -> None:
+    """Give A/B/C labels to networks with no name (e.g. redacted on macOS).
+
+    Labels are per-scan only: without a stable identifier there is no way to
+    keep the same label for the same network across scans.
+    """
+    counter = 0
+    for observation in observations:
+        if not observation.ssid:
+            observation.ssid = _letter_label(counter)
+            counter += 1
+
+
 def scan() -> List[AccessPointObservation]:
     """Scan nearby access points using the backend for the current OS."""
     system = platform.system()
     logger.debug("Detected operating system: %s", system)
     if system == "Darwin":
-        return _scan_macos()
-    if system == "Linux":
-        return _scan_linux()
-    raise NotImplementedError(f"No scan backend implemented for OS: {system}")
+        observations = _scan_macos()
+    elif system == "Linux":
+        observations = _scan_linux()
+    else:
+        raise NotImplementedError(f"No scan backend implemented for OS: {system}")
+    _assign_fallback_labels(observations)
+    return observations
