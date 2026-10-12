@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # Run the Wi-Fi capture loop. Arguments are passed through to run_capture.py,
-# e.g. ./scripts/run_capture.sh --location buceo-desk --interval 60
+# e.g. ./run_capture.sh --location buceo-desk --interval 60
 set -euo pipefail
 
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")"
 
 # Activate a local virtualenv if present.
 if [[ -d ".venv" ]]; then

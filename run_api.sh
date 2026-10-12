@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # Run the read-only Flask API that serves the dashboard and the data endpoints.
-# Arguments are passed through to api/app.py, e.g. ./scripts/run_api.sh --port 5000
+# Arguments are passed through to api/app.py, e.g. ./run_api.sh --port 5000
 set -euo pipefail
 
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")"
 
 # Activate a local virtualenv if present.
 if [[ -d ".venv" ]]; then

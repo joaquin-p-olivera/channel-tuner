@@ -34,7 +34,8 @@ channel-tuner/
 ├── api/
 │   └── app.py          # Flask: read-only /api/* endpoints + serves web/
 ├── web/                # HTML/CSS/JS dashboard (Chart.js), reads /api/*
-└── scripts/            # run_capture.sh / run_api.sh
+├── run_capture.sh      # start the capture loop
+└── run_api.sh          # start the API + dashboard
 ```
 
 ### Data model
@@ -65,13 +66,13 @@ python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 
 # 2. Start capturing (every 60s, labelled location). Ctrl-C to stop.
-./scripts/run_capture.sh --location buceo-desk --interval 60
+./run_capture.sh --location buceo-desk --interval 60
 
 # Single test scan (no loop):
-./scripts/run_capture.sh --location buceo-desk --once
+./run_capture.sh --location buceo-desk --once
 
 # 3. In another terminal, serve the dashboard + API
-./scripts/run_api.sh --port 5000
+./run_api.sh --port 5000
 # open http://127.0.0.1:5000
 ```
 
