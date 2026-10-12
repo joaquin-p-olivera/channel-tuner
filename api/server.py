@@ -17,6 +17,11 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any, Dict, List
 from urllib.parse import parse_qs, urlparse
 
+try:  # when run as a script (api/ on sys.path)
+    from scoring import compute_channel_score
+except ModuleNotFoundError:  # when imported as a package (repo root on sys.path)
+    from api.scoring import compute_channel_score
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s %(levelname)s %(name)s: %(message)s",
@@ -88,6 +93,16 @@ def channel_occupancy(location: str) -> Dict[str, Any]:
     return {"location": location, "scan_id": scan_id, "channels": rows}
 
 
+def channel_score(location: str) -> Dict[str, Any]:
+    """Congestion score and recommended 2.4 GHz channel for the latest scan."""
+    scan_id = latest_scan_id(location)
+    rows = query("SELECT channel, rssi FROM observations WHERE scan_id = ?", (scan_id,))
+    result = compute_channel_score(rows)
+    result["location"] = location
+    result["scan_id"] = scan_id
+    return result
+
+
 def timeline(location: str) -> Dict[str, Any]:
     """Access point count per scan over time, for a location."""
     rows = query(
@@ -144,6 +159,7 @@ class Handler(BaseHTTPRequestHandler):
             "/api/summary": summary,
             "/api/locations": locations,
             "/api/channel-occupancy": lambda: channel_occupancy(location),
+            "/api/channel-score": lambda: channel_score(location),
             "/api/timeline": lambda: timeline(location),
         }
         if parsed.path in routes:

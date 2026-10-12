@@ -77,6 +77,64 @@ select {
   color: var(--text-muted);
 }
 
+.recommendation {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 24px;
+}
+
+.rec-headline {
+  font-size: 1.1rem;
+}
+
+.rec-headline strong {
+  color: var(--accent);
+  font-size: 1.3rem;
+}
+
+.candidates {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+
+.candidate {
+  flex: 1 1 100px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px;
+  text-align: center;
+}
+
+.candidate.best {
+  border-color: var(--accent);
+}
+
+.candidate-ch {
+  display: block;
+  font-weight: 500;
+}
+
+.candidate-val {
+  display: block;
+  color: var(--text);
+  font-size: 1.1rem;
+}
+
+.candidate small {
+  color: var(--text-muted);
+}
+
+.rec-note {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  margin: 12px 0 0;
+}
+
 .chart-block {
   background: var(--surface);
   border: 1px solid var(--border);
