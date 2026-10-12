@@ -12,11 +12,12 @@ we only call the native tool/framework and parse its output:
 Only passively broadcast beacon data is read. Nothing is transmitted.
 """
 
+import json
 import logging
 import platform
 import re
 import subprocess
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 from capture.models import AccessPointObservation
 
@@ -87,8 +88,91 @@ def _translate_band(band_code: Optional[int]) -> Optional[str]:
     return mapping.get(band_code)
 
 
+def _parse_macos_channel(text: Optional[str]) -> Tuple[Optional[int], Optional[str], Optional[str]]:
+    """Parse a system_profiler channel string like '6 (2GHz, 20MHz)'."""
+    if not text:
+        return (None, None, None)
+    channel = None
+    channel_match = re.match(r"\s*(\d+)", text)
+    if channel_match:
+        channel = int(channel_match.group(1))
+    band = None
+    band_match = re.search(r"(\d(?:\.\d)?GHz)", text)
+    if band_match:
+        raw = band_match.group(1)
+        band = "2.4GHz" if raw in ("2GHz", "2.4GHz") else raw
+    width = None
+    width_match = re.search(r"(\d+MHz)", text)
+    if width_match:
+        width = width_match.group(1)
+    return (channel, band, width)
+
+
+def _parse_macos_signal(text: Optional[str]) -> Optional[int]:
+    """Parse the dBm value from a string like '-55 dBm / -90 dBm'."""
+    if not text:
+        return None
+    signal_match = re.search(r"(-?\d+)\s*dBm", text)
+    return int(signal_match.group(1)) if signal_match else None
+
+
+def _scan_macos_system_profiler() -> List[AccessPointObservation]:
+    """Scan using the built-in `system_profiler` command (no pip dependency).
+
+    This backend needs nothing installed, which is useful on managed machines
+    where pyobjc cannot be installed. Note: system_profiler does not expose
+    BSSIDs for neighbouring networks, so unique-network counts are unavailable
+    here; channel, band and signal are. Location permission may still be
+    required on recent macOS versions.
+    """
+    command = ["system_profiler", "SPAirPortDataType", "-json"]
+    logger.debug("Running scan command: %s", " ".join(command))
+    output = subprocess.check_output(command, text=True)
+    data = json.loads(output)
+
+    observations: List[AccessPointObservation] = []
+    for section in data.get("SPAirPortDataType", []):
+        for interface in section.get("spairport_airport_interfaces", []):
+            networks = list(interface.get("spairport_airport_other_local_wireless_networks", []))
+            current = interface.get("spairport_current_network_information")
+            if isinstance(current, dict):
+                networks.append(current)
+            for network in networks:
+                channel, band, width = _parse_macos_channel(
+                    network.get("spairport_network_channel")
+                )
+                observations.append(
+                    AccessPointObservation(
+                        bssid=None,  # system_profiler does not expose BSSIDs
+                        ssid=network.get("_name"),
+                        channel=channel,
+                        band=band,
+                        rssi=_parse_macos_signal(network.get("spairport_signal_noise")),
+                        channel_width=width,
+                        security=network.get("spairport_security_mode"),
+                    )
+                )
+    if not observations:
+        logger.warning(
+            "system_profiler returned no networks; Location permission may be required."
+        )
+    return observations
+
+
 def _scan_macos() -> List[AccessPointObservation]:
-    """Scan using the CoreWLAN framework on macOS."""
+    """Scan on macOS, preferring CoreWLAN and falling back to system_profiler."""
+    try:
+        import CoreWLAN  # noqa: F401  # imported lazily; macOS + pyobjc only
+    except ImportError:
+        logger.info(
+            "CoreWLAN not available; using the no-dependency system_profiler backend."
+        )
+        return _scan_macos_system_profiler()
+    return _scan_macos_corewlan()
+
+
+def _scan_macos_corewlan() -> List[AccessPointObservation]:
+    """Scan using the CoreWLAN framework on macOS (needs pyobjc)."""
     from CoreWLAN import CWWiFiClient  # imported lazily; macOS only
 
     client = CWWiFiClient.sharedWiFiClient()

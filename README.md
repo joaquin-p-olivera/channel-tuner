@@ -53,9 +53,12 @@ and change the label when you move it.
 
 - Python 3.9+
 - `Flask` (see `requirements.txt`)
-- **macOS:** `pyobjc-framework-CoreWLAN`, plus Location Services permission for
-  the terminal (Apple ties Wi-Fi scanning to location; without it, BSSIDs come
-  back empty).
+- **macOS:** two backends, chosen automatically:
+  - `pyobjc-framework-CoreWLAN` if installed (richer: includes BSSIDs).
+  - otherwise the built-in `system_profiler` command, which needs **nothing
+    installed** — useful on managed machines. It does not expose BSSIDs, so
+    unique-network counts are unavailable, but channel/band/signal are.
+  - Either way, Location Services permission for the terminal may be required.
 - **Linux:** `nmcli` (NetworkManager), already present on most desktops.
 
 ## Usage
