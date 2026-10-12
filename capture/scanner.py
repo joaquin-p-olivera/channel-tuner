@@ -116,6 +116,29 @@ def _parse_macos_signal(text: Optional[str]) -> Optional[int]:
     return int(signal_match.group(1)) if signal_match else None
 
 
+_MACOS_SECURITY_LABELS = {
+    "none": "Open",
+    "open": "Open",
+    "wep": "WEP",
+    "wpa_personal": "WPA",
+    "wpa2_personal": "WPA2",
+    "wpa2_personal_mixed": "WPA/WPA2",
+    "wpa3_personal": "WPA3",
+    "wpa3_transition": "WPA2/WPA3",
+    "wpa2_wpa3_personal": "WPA2/WPA3",
+    "wpa2_enterprise": "WPA2-Enterprise",
+    "wpa3_enterprise": "WPA3-Enterprise",
+}
+
+
+def _clean_macos_security(raw: Optional[str]) -> Optional[str]:
+    """Turn 'spairport_security_mode_wpa2_personal' into a friendly label."""
+    if not raw:
+        return None
+    key = raw.replace("spairport_security_mode_", "").replace("pairport_security_mode_", "")
+    return _MACOS_SECURITY_LABELS.get(key, key)
+
+
 def _scan_macos_system_profiler() -> List[AccessPointObservation]:
     """Scan using the built-in `system_profiler` command (no pip dependency).
 
@@ -141,6 +164,13 @@ def _scan_macos_system_profiler() -> List[AccessPointObservation]:
                 channel, band, width = _parse_macos_channel(
                     network.get("spairport_network_channel")
                 )
+                if channel is None:
+                    # Skip entries without a usable channel (e.g. the connected
+                    # network sometimes reports its details under other keys).
+                    logger.debug(
+                        "Skipping network without a channel: %s", network.get("_name")
+                    )
+                    continue
                 observations.append(
                     AccessPointObservation(
                         bssid=None,  # system_profiler does not expose BSSIDs
@@ -149,7 +179,7 @@ def _scan_macos_system_profiler() -> List[AccessPointObservation]:
                         band=band,
                         rssi=_parse_macos_signal(network.get("spairport_signal_noise")),
                         channel_width=width,
-                        security=network.get("spairport_security_mode"),
+                        security=_clean_macos_security(network.get("spairport_security_mode")),
                     )
                 )
     if not observations:
