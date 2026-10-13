@@ -92,10 +92,17 @@ from access points on that channel and on overlapping channels, weighted by
 signal strength (RSSI), and recommends the least congested one. Exposed at
 `/api/channel-score` and shown as a recommendation card on the dashboard.
 
+RSSI is stored in dBm across backends: macOS reports dBm directly, and Linux
+`nmcli`'s 0-100 quality is converted to an approximate dBm, so the score is
+comparable across systems.
+
+Time views on the dashboard: interference per candidate channel over time
+(`/api/interference-timeline`) and signal per network over time
+(`/api/network-timeline`), so you can see when each channel or network is clear
+vs congested.
+
 Known TODOs:
 
-- Normalize RSSI across backends (Linux `nmcli` reports a 0-100 quality value,
-  macOS CoreWLAN reports dBm).
 - Hour x channel heatmap endpoint and view.
 - Optional latency logging (`ping`) to correlate congestion with performance.
 - Optional "apply best channel" step for your own router.

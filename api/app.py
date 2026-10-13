@@ -16,9 +16,13 @@ from typing import Any, Dict, List
 from flask import Flask, jsonify, request
 
 try:  # when run as a script (api/ on sys.path)
-    from scoring import compute_channel_score
+    from scoring import compute_channel_score, interference_timeline, network_timeline
 except ModuleNotFoundError:  # when imported as a package (repo root on sys.path)
-    from api.scoring import compute_channel_score
+    from api.scoring import (
+        compute_channel_score,
+        interference_timeline,
+        network_timeline,
+    )
 
 logging.basicConfig(
     level=logging.INFO,
@@ -107,6 +111,46 @@ def api_channel_score():
     result = compute_channel_score(rows)
     result["location"] = location
     result["scan_id"] = scan_id
+    return jsonify(result)
+
+
+@app.route("/api/interference-timeline")
+def api_interference_timeline():
+    """Interference per candidate channel over time, for a location."""
+    location = request.args.get("location", "default")
+    rows = query(
+        """
+        SELECT s.scan_id AS scan_id, s.timestamp AS timestamp, o.channel AS channel,
+               o.rssi AS rssi
+        FROM scans s
+        LEFT JOIN observations o ON o.scan_id = s.scan_id
+        WHERE s.location = ?
+        ORDER BY s.timestamp
+        """,
+        (location,),
+    )
+    result = interference_timeline(rows)
+    result["location"] = location
+    return jsonify(result)
+
+
+@app.route("/api/network-timeline")
+def api_network_timeline():
+    """Signal per network over time, for the most frequently seen networks."""
+    location = request.args.get("location", "default")
+    rows = query(
+        """
+        SELECT s.scan_id AS scan_id, s.timestamp AS timestamp,
+               o.bssid_hash AS bssid_hash, o.ssid AS ssid, o.rssi AS rssi
+        FROM scans s
+        LEFT JOIN observations o ON o.scan_id = s.scan_id
+        WHERE s.location = ?
+        ORDER BY s.timestamp
+        """,
+        (location,),
+    )
+    result = network_timeline(rows)
+    result["location"] = location
     return jsonify(result)
 
 

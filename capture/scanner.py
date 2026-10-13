@@ -44,6 +44,21 @@ def _split_nmcli_terse(line: str) -> List[str]:
     return [field.replace("\\:", ":") for field in fields]
 
 
+def _nmcli_signal_to_dbm(signal_percent: Optional[int]) -> Optional[int]:
+    """Convert nmcli's 0-100 signal quality to an approximate RSSI in dBm.
+
+    NetworkManager reports a 0-100 quality, not dBm. We invert the common
+    approximation quality = 2 * (dBm + 100), i.e. dBm ~= percent/2 - 100, so the
+    stored RSSI uses the same dBm scale as the macOS backends and the congestion
+    score is comparable across systems. It is an approximation, clamped to a
+    sane range.
+    """
+    if signal_percent is None:
+        return None
+    dbm = round(signal_percent / 2 - 100)
+    return max(-100, min(-30, dbm))
+
+
 def _scan_linux() -> List[AccessPointObservation]:
     """Scan using nmcli on Linux."""
     fields = "SSID,BSSID,CHAN,FREQ,SIGNAL,SECURITY"
@@ -67,9 +82,7 @@ def _scan_linux() -> List[AccessPointObservation]:
                 ssid=ssid or None,
                 channel=_safe_int(chan),
                 band=_band_from_frequency(freq_mhz),
-                # TODO: nmcli SIGNAL is a 0-100 quality value, not dBm. Reconcile
-                # with the macOS dBm scale before computing cross-OS congestion.
-                rssi=_safe_int(signal),
+                rssi=_nmcli_signal_to_dbm(_safe_int(signal)),
                 channel_width=None,
                 security=security or None,
             )

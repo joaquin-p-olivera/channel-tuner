@@ -4,9 +4,16 @@
 // No SQLite access here: the JSON from /api/* is the contract with the backend.
 
 const NON_OVERLAPPING_CHANNELS = [1, 6, 11];
+const CHANNEL_LINE_COLORS = { 1: "#1d9e75", 6: "#378add", 11: "#d4537e" };
+const LINE_PALETTE = [
+  "#1d9e75", "#378add", "#d4537e", "#ba7517",
+  "#7f77dd", "#0f6e56", "#993c1d", "#5f5e5a",
+];
 
 let occupancyChart = null;
 let timelineChart = null;
+let interferenceChart = null;
+let networkChart = null;
 
 async function fetchJson(url) {
   const response = await fetch(url);
@@ -138,10 +145,64 @@ async function renderTimeline(location) {
   });
 }
 
+async function renderInterference(location) {
+  const data = await fetchJson(
+    `/api/interference-timeline?location=${encodeURIComponent(location)}`
+  );
+  const datasets = data.series.map((series) => ({
+    label: `Ch ${series.channel}`,
+    data: series.values,
+    borderColor: CHANNEL_LINE_COLORS[series.channel] || "#888",
+    backgroundColor: CHANNEL_LINE_COLORS[series.channel] || "#888",
+    spanGaps: true,
+    tension: 0.2,
+  }));
+
+  if (interferenceChart) {
+    interferenceChart.destroy();
+  }
+  interferenceChart = new Chart(document.getElementById("interference-chart"), {
+    type: "line",
+    data: { labels: data.timestamps, datasets },
+    options: {
+      scales: { y: { title: { display: true, text: "Interference (dBm)" } } },
+      plugins: { legend: { display: true } },
+    },
+  });
+}
+
+async function renderNetworks(location) {
+  const data = await fetchJson(
+    `/api/network-timeline?location=${encodeURIComponent(location)}`
+  );
+  const datasets = data.series.map((series, index) => ({
+    label: series.label,
+    data: series.values,
+    borderColor: LINE_PALETTE[index % LINE_PALETTE.length],
+    backgroundColor: LINE_PALETTE[index % LINE_PALETTE.length],
+    spanGaps: true,
+    tension: 0.2,
+  }));
+
+  if (networkChart) {
+    networkChart.destroy();
+  }
+  networkChart = new Chart(document.getElementById("network-chart"), {
+    type: "line",
+    data: { labels: data.timestamps, datasets },
+    options: {
+      scales: { y: { title: { display: true, text: "Signal (dBm)" } } },
+      plugins: { legend: { display: true } },
+    },
+  });
+}
+
 async function refresh(location) {
   await Promise.all([
     renderScore(location),
     renderOccupancy(location),
+    renderInterference(location),
+    renderNetworks(location),
     renderTimeline(location),
   ]);
 }

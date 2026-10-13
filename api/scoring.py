@@ -10,6 +10,7 @@ Pure functions only, so both the Flask and the stdlib server can import this.
 """
 
 import math
+from collections import OrderedDict
 from typing import Any, Dict, Iterable, List, Optional
 
 CANDIDATE_CHANNELS_24GHZ = (1, 6, 11)
@@ -80,3 +81,67 @@ def compute_channel_score(observations: Iterable[Dict[str, Any]]) -> Dict[str, A
     candidates = [_score_candidate(channel, aps) for channel in CANDIDATE_CHANNELS_24GHZ]
     recommended = min(candidates, key=_recommendation_sort_key)["channel"]
     return {"candidates": candidates, "recommended": recommended}
+
+
+def _group_rows_by_scan(rows: Iterable[Dict[str, Any]]) -> "OrderedDict":
+    """Group flat (scan_id, timestamp, ...) rows into per-scan buckets, in order."""
+    scans: "OrderedDict" = OrderedDict()
+    for row in rows:
+        scan_id = row["scan_id"]
+        if scan_id not in scans:
+            scans[scan_id] = {"timestamp": row["timestamp"], "rows": []}
+        scans[scan_id]["rows"].append(row)
+    return scans
+
+
+def interference_timeline(rows: Iterable[Dict[str, Any]]) -> Dict[str, Any]:
+    """Interference per candidate channel over time.
+
+    rows: flat dicts with 'scan_id', 'timestamp', 'channel', 'rssi'.
+    Returns aligned 'timestamps' and one series per candidate channel, each a
+    list of interference values in dBm (None where that channel is clear).
+    """
+    scans = _group_rows_by_scan(rows)
+    timestamps: List[str] = []
+    values: Dict[int, List[Optional[float]]] = {ch: [] for ch in CANDIDATE_CHANNELS_24GHZ}
+    for scan in scans.values():
+        timestamps.append(scan["timestamp"])
+        score = compute_channel_score(scan["rows"])
+        by_channel = {c["channel"]: c["interference_dbm"] for c in score["candidates"]}
+        for channel in CANDIDATE_CHANNELS_24GHZ:
+            values[channel].append(by_channel.get(channel))
+    series = [{"channel": ch, "values": values[ch]} for ch in CANDIDATE_CHANNELS_24GHZ]
+    return {"timestamps": timestamps, "series": series}
+
+
+def network_timeline(rows: Iterable[Dict[str, Any]], limit: int = 8) -> Dict[str, Any]:
+    """Signal (RSSI) per network over time, for the most frequently seen networks.
+
+    rows: flat dicts with 'scan_id', 'timestamp', 'bssid_hash', 'ssid', 'rssi'.
+    Returns aligned 'timestamps' and one series per network (labelled by SSID),
+    each a list of RSSI values in dBm (None when that network was not seen).
+    """
+    scans = _group_rows_by_scan(rows)
+    scan_ids = list(scans.keys())
+    timestamps = [scans[scan_id]["timestamp"] for scan_id in scan_ids]
+
+    networks: Dict[str, Dict[str, Any]] = {}
+    for row in rows:
+        bssid = row.get("bssid_hash")
+        rssi = row.get("rssi")
+        if bssid is None or rssi is None:
+            continue
+        network = networks.setdefault(
+            bssid, {"label": row.get("ssid") or bssid, "rssi_by_scan": {}, "count": 0}
+        )
+        network["rssi_by_scan"][row["scan_id"]] = rssi
+        network["count"] += 1
+        if row.get("ssid"):
+            network["label"] = row["ssid"]
+
+    top = sorted(networks.values(), key=lambda n: n["count"], reverse=True)[:limit]
+    series = [
+        {"label": network["label"], "values": [network["rssi_by_scan"].get(sid) for sid in scan_ids]}
+        for network in top
+    ]
+    return {"timestamps": timestamps, "series": series}
