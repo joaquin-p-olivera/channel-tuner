@@ -14,6 +14,15 @@ let occupancyChart = null;
 let timelineChart = null;
 let interferenceChart = null;
 let networkChart = null;
+let networkChannelChart = null;
+
+function formatTime(timestamp) {
+  const date = new Date(timestamp);
+  if (Number.isNaN(date.getTime())) {
+    return timestamp;
+  }
+  return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+}
 
 async function fetchJson(url) {
   const response = await fetch(url);
@@ -119,7 +128,7 @@ async function renderTimeline(location) {
   const data = await fetchJson(
     `/api/timeline?location=${encodeURIComponent(location)}`
   );
-  const labels = data.points.map((row) => row.timestamp);
+  const labels = data.points.map((row) => formatTime(row.timestamp));
   const counts = data.points.map((row) => row.ap_count);
 
   if (timelineChart) {
@@ -163,7 +172,7 @@ async function renderInterference(location) {
   }
   interferenceChart = new Chart(document.getElementById("interference-chart"), {
     type: "line",
-    data: { labels: data.timestamps, datasets },
+    data: { labels: data.timestamps.map(formatTime), datasets },
     options: {
       scales: { y: { title: { display: true, text: "Interference (dBm)" } } },
       plugins: { legend: { display: true } },
@@ -189,9 +198,50 @@ async function renderNetworks(location) {
   }
   networkChart = new Chart(document.getElementById("network-chart"), {
     type: "line",
-    data: { labels: data.timestamps, datasets },
+    data: { labels: data.timestamps.map(formatTime), datasets },
     options: {
       scales: { y: { title: { display: true, text: "Signal (dBm)" } } },
+      plugins: { legend: { display: true } },
+    },
+  });
+}
+
+async function renderNetworkChannels(location) {
+  const data = await fetchJson(
+    `/api/network-channels?location=${encodeURIComponent(location)}`
+  );
+  const count = data.series.length;
+  const datasets = data.series.map((series, index) => ({
+    label: series.label,
+    // Small horizontal offset per network so co-channel points do not overlap.
+    data: series.points.map((point) => ({
+      x: point.x + (index - (count - 1) / 2) * 0.05,
+      y: point.y,
+    })),
+    backgroundColor: LINE_PALETTE[index % LINE_PALETTE.length],
+    pointRadius: 5,
+    showLine: false,
+  }));
+
+  if (networkChannelChart) {
+    networkChannelChart.destroy();
+  }
+  networkChannelChart = new Chart(document.getElementById("network-channel-chart"), {
+    type: "scatter",
+    data: { datasets },
+    options: {
+      scales: {
+        x: {
+          type: "linear",
+          min: -0.5,
+          max: Math.max(0, data.timestamps.length - 1) + 0.5,
+          ticks: {
+            stepSize: 1,
+            callback: (value) => formatTime(data.timestamps[Math.round(value)] || ""),
+          },
+        },
+        y: { title: { display: true, text: "Channel" } },
+      },
       plugins: { legend: { display: true } },
     },
   });
@@ -203,6 +253,7 @@ async function refresh(location) {
     renderOccupancy(location),
     renderInterference(location),
     renderNetworks(location),
+    renderNetworkChannels(location),
     renderTimeline(location),
   ]);
 }

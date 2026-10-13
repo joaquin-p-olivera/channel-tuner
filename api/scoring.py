@@ -145,3 +145,34 @@ def network_timeline(rows: Iterable[Dict[str, Any]], limit: int = 8) -> Dict[str
         for network in top
     ]
     return {"timestamps": timestamps, "series": series}
+
+
+def network_channel_series(rows: Iterable[Dict[str, Any]], limit: int = 10) -> Dict[str, Any]:
+    """Which channel each network sits on at each scan.
+
+    rows: flat dicts with 'scan_id', 'timestamp', 'bssid_hash', 'ssid', 'channel'.
+    Returns aligned 'timestamps' and, per network, a list of {x, y} points where
+    x is the scan index and y is the channel. Networks sharing a channel at the
+    same scan land on the same y at the same x.
+    """
+    scans = _group_rows_by_scan(rows)
+    scan_index = {scan_id: index for index, scan_id in enumerate(scans.keys())}
+    timestamps = [scans[scan_id]["timestamp"] for scan_id in scans.keys()]
+
+    networks: Dict[str, Dict[str, Any]] = {}
+    for row in rows:
+        bssid = row.get("bssid_hash")
+        channel = row.get("channel")
+        if bssid is None or channel is None:
+            continue
+        network = networks.setdefault(
+            bssid, {"label": row.get("ssid") or bssid, "points": [], "count": 0}
+        )
+        network["points"].append({"x": scan_index[row["scan_id"]], "y": channel})
+        network["count"] += 1
+        if row.get("ssid"):
+            network["label"] = row["ssid"]
+
+    top = sorted(networks.values(), key=lambda n: n["count"], reverse=True)[:limit]
+    series = [{"label": network["label"], "points": network["points"]} for network in top]
+    return {"timestamps": timestamps, "series": series}

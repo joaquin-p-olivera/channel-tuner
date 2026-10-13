@@ -16,11 +16,17 @@ from typing import Any, Dict, List
 from flask import Flask, jsonify, request
 
 try:  # when run as a script (api/ on sys.path)
-    from scoring import compute_channel_score, interference_timeline, network_timeline
+    from scoring import (
+        compute_channel_score,
+        interference_timeline,
+        network_channel_series,
+        network_timeline,
+    )
 except ModuleNotFoundError:  # when imported as a package (repo root on sys.path)
     from api.scoring import (
         compute_channel_score,
         interference_timeline,
+        network_channel_series,
         network_timeline,
     )
 
@@ -150,6 +156,26 @@ def api_network_timeline():
         (location,),
     )
     result = network_timeline(rows)
+    result["location"] = location
+    return jsonify(result)
+
+
+@app.route("/api/network-channels")
+def api_network_channels():
+    """Which channel each network is on at each scan (to spot co-channel sharing)."""
+    location = request.args.get("location", "default")
+    rows = query(
+        """
+        SELECT s.scan_id AS scan_id, s.timestamp AS timestamp,
+               o.bssid_hash AS bssid_hash, o.ssid AS ssid, o.channel AS channel
+        FROM scans s
+        LEFT JOIN observations o ON o.scan_id = s.scan_id
+        WHERE s.location = ?
+        ORDER BY s.timestamp
+        """,
+        (location,),
+    )
+    result = network_channel_series(rows)
     result["location"] = location
     return jsonify(result)
 
