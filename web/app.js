@@ -5,9 +5,10 @@
 
 const NON_OVERLAPPING_CHANNELS = [1, 6, 11];
 const CHANNEL_LINE_COLORS = { 1: "#1d9e75", 6: "#378add", 11: "#d4537e" };
+// 14 distinct categorical colors (Tableau-style), legible on a dark background.
 const LINE_PALETTE = [
-  "#1d9e75", "#378add", "#d4537e", "#ba7517",
-  "#7f77dd", "#0f6e56", "#993c1d", "#5f5e5a",
+  "#4e79a7", "#f28e2b", "#e15759", "#76b7b2", "#59a14f", "#edc948", "#b07aa1",
+  "#ff9da7", "#9c755f", "#bab0ac", "#86bcb6", "#d37295", "#a0cbe8", "#ffbe7d",
 ];
 
 let occupancyChart = null;
@@ -242,7 +243,19 @@ async function renderNetworkChannels(location) {
         },
         y: { title: { display: true, text: "Channel" } },
       },
-      plugins: { legend: { display: true } },
+      interaction: { mode: "nearest", intersect: true },
+      plugins: {
+        legend: { display: true },
+        tooltip: {
+          callbacks: {
+            title: (items) =>
+              items.length
+                ? formatTime(data.timestamps[Math.round(items[0].parsed.x)] || "")
+                : "",
+            label: (item) => `${item.dataset.label} — ch ${item.parsed.y}`,
+          },
+        },
+      },
     },
   });
 }
